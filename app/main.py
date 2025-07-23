@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.endpoints import movements, warehouse_stocks, movement_details
+from app.endpoints import warehouses
 
 app = FastAPI(
     title="Warehouse Movement Service",
@@ -16,6 +16,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(movements.router)
-app.include_router(warehouse_stocks.router)
-app.include_router(movement_details.router)
+app.include_router(warehouses.router)
