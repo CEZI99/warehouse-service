@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
-from models import Movement, WarehouseStock
-from database import SessionLocal, DBMovement, DBWarehouseStock
+from app.models import Movement, WarehouseStock
+from app.database import SessionLocal, DBMovement, DBWarehouseStock
 import uuid
 
 app = FastAPI(
