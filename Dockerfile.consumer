@@ -6,7 +6,6 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc python3-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Сначала устанавливаем kafka-python, затем aiokafka
 COPY requirements.txt .
 RUN pip install --no-cache-dir kafka-python==2.0.2 && \
     pip install --no-cache-dir -r requirements.txt
