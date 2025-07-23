@@ -1,6 +1,6 @@
 import logging
 from aiokafka import AIOKafkaProducer
-from models.schemas import KafkaEvent
+from app.models.schemas import KafkaEvent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

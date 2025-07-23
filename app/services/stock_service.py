@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from models.database import DBWarehouseStock
-from models.schemas import WarehouseStock
+from app.models.database import DBWarehouseStock
+from app.models.schemas import WarehouseStock
 from datetime import datetime
 
 class StockService:

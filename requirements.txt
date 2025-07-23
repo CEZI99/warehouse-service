@@ -2,8 +2,9 @@ fastapi==0.109.1
 uvicorn==0.27.0
 sqlalchemy==2.0.25
 asyncpg==0.28.0
-aiokafka==0.8.0
+aiokafka==0.10.0  # Обновленная версия
 python-dotenv==1.0.0
 loguru==0.7.2
 pydantic==2.6.1
 alembic==1.13.1
+kafka-python==2.0.2  # Явно добавляем совместимую версию

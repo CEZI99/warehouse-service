@@ -1,7 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from models.database import DBMovement, DBWarehouseStock
-from datetime import datetime
-
+from app.models.database import DBMovement, DBWarehouseStock
 class MovementService:
     @staticmethod
     async def get_stock(session: AsyncSession, warehouse_id: str, product_id: str):
