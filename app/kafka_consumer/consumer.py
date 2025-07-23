@@ -23,6 +23,7 @@ class KafkaConsumer:
         )
 
     async def process_message(self, message):
+        print(message)
         try:
             data = json.loads(message.value.decode('utf-8'))
             movement = {
@@ -33,11 +34,11 @@ class KafkaConsumer:
                 "quantity": data["data"]["quantity"],
                 "timestamp": datetime.fromisoformat(data["data"]["timestamp"].rstrip('Z'))
             }
-            
+
             async with self.Session() as session:
                 await MovementService.process_movement(session, movement)
                 await session.commit()
-                
+
         except Exception as e:
             logger.error(f"Error processing message: {e}")
 
@@ -51,7 +52,7 @@ class KafkaConsumer:
             session_timeout_ms=60000,  # Увеличиваем таймаут
             heartbeat_interval_ms=20000  # Увеличиваем интервал heartbeat
         )
-        
+
         try:
             await consumer.start()
             while True:
@@ -65,6 +66,7 @@ class KafkaConsumer:
             await consumer.stop()
 
 async def main():
+    """start main"""
     consumer = KafkaConsumer("kafka:9092")
     await consumer.consume()
 
