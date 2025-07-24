@@ -1,15 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi_cache.decorator import cache
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta
-from app.models.database import get_db
-from app.models.database import DBMovement, DBWarehouseStock
+import os
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi_cache.decorator import cache
+from app.models.database import get_db, DBMovement, DBWarehouseStock
 
 router = APIRouter(prefix="/api/warehouses", tags=["Warehouse API"])
 
+CACHE_EXPIRE_STOCK = int(os.getenv("CACHE_EXPIRE_STOCK", 300))  # 5 минут по умолчанию
+CACHE_EXPIRE_MOVEMENTS = int(os.getenv("CACHE_EXPIRE_MOVEMENTS", 3600))  # 1 час по умолчанию
+
+
 @router.get("/{warehouse_id}/products/{product_id}")
-@cache(expire=timedelta(minutes=5),
-       key_builder=lambda *args, **kwargs: f"stock:{kwargs['warehouse_id']}:{kwargs['product_id']}")
+@cache(
+    expire=timedelta(seconds=CACHE_EXPIRE_STOCK),
+    key_builder=lambda request, *args, **kwargs: f"stock:{request.path_params['warehouse_id']}:{request.path_params['product_id']}"
+)
+@cache(
+    expire=timedelta(seconds=CACHE_EXPIRE_STOCK),
+    key_builder=lambda *args, **kwargs:f"stock:{kwargs['request'].path_params['warehouse_id']}:{kwargs['request'].path_params['product_id']}"
+)
 async def get_warehouse_stock(
     warehouse_id: str,
     product_id: str,
@@ -30,8 +40,10 @@ async def get_warehouse_stock(
     }
 
 @router.get("/movements/{movement_id}")
-@cache(expire=timedelta(hours=1),
-       key_builder=lambda *args, **kwargs: f"movement:{kwargs['movement_id']}")
+@cache(
+    expire=timedelta(seconds=CACHE_EXPIRE_MOVEMENTS),
+    key_builder=lambda *args, **kwargs: f"movement:{kwargs['request'].path_params['movement_id']}"
+)
 async def get_movement_details(
     movement_id: str,
     db: AsyncSession = Depends(get_db)
