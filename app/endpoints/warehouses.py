@@ -14,10 +14,6 @@ CACHE_EXPIRE_MOVEMENTS = int(os.getenv("CACHE_EXPIRE_MOVEMENTS", 3600))  # 1 Ñ‡Ð
 @router.get("/{warehouse_id}/products/{product_id}")
 @cache(
     expire=timedelta(seconds=CACHE_EXPIRE_STOCK),
-    key_builder=lambda request, *args, **kwargs: f"stock:{request.path_params['warehouse_id']}:{request.path_params['product_id']}"
-)
-@cache(
-    expire=timedelta(seconds=CACHE_EXPIRE_STOCK),
     key_builder=lambda *args, **kwargs:f"stock:{kwargs['request'].path_params['warehouse_id']}:{kwargs['request'].path_params['product_id']}"
 )
 async def get_warehouse_stock(

@@ -2,7 +2,6 @@ import json
 import logging
 import asyncio
 from datetime import datetime
-from typing import Dict, Any
 
 from aiokafka import AIOKafkaConsumer
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
