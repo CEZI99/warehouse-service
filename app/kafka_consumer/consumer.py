@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.models.database import DATABASE_URL
 from app.services.movement_service import MovementService
+from app.dependencies.data_validate_message import required_structure
 
 # Настройка логирования
 logging.basicConfig(
@@ -28,25 +29,26 @@ class KafkaConsumer:
 
     async def _validate_message_structure(self, data: Dict[str, Any]) -> bool:
         """Проверка структуры сообщения"""
-        required_fields = {
-            "data": ["movement_id", "event", "warehouse_id", "product_id", "quantity", "timestamp"]
-        }
-
         try:
             if not isinstance(data, dict):
                 raise ValueError("Message is not a dictionary")
 
-            for top_level, nested_fields in required_fields.items():
-                if top_level not in data:
-                    raise ValueError(f"Missing top-level field: {top_level}")
+            # Проверка верхнего уровня
+            for top_level_key in required_structure:
+                if top_level_key not in data:
+                    raise ValueError(f"Missing top-level key: {top_level_key}")
 
-                for field in nested_fields:
-                    if field not in data[top_level]:
-                        raise ValueError(f"Missing nested field: {top_level}.{field}")
+            # Проверка вложенной структуры data
+            if not isinstance(data["data"], dict):
+                raise ValueError("'data' must be an object")
+
+            for nested_key in required_structure["data"]:
+                if nested_key not in data["data"]:
+                    raise ValueError(f"Missing nested key: data.{nested_key}")
 
             return True
         except Exception as e:
-            logger.error(f"Invalid message structure: {e}")
+            logger.error(f"Invalid message keys structure: {e}")
             return False
 
     async def process_message(self, message) -> bool:
@@ -76,20 +78,21 @@ class KafkaConsumer:
 
             # Подготовка данных для обработки
             movement = {
-                "id": data["data"]["movement_id"],
+                "id": data["id"],
+                "source": data["source"],
+                "movement_id": data["data"]["movement_id"],
                 "movement_type": data["data"]["event"],
                 "warehouse_id": data["data"]["warehouse_id"],
                 "product_id": data["data"]["product_id"],
                 "quantity": data["data"]["quantity"],
-                "timestamp": datetime.fromisoformat(data["data"]["timestamp"].rstrip('Z')),
-                "last_updated": datetime.now()  # Добавляем текущую дату/время
+                "timestamp": datetime.fromisoformat(data["data"]["timestamp"].rstrip('Z'))
             }
 
             logger.info(f"Processing movement: {movement['id']}")
 
             # Обработка движения
             async with self.Session() as session:
-                await MovementService.process_movement(session, movement)
+                await MovementService._process_movement(session, movement)
                 await session.commit()
 
             return True

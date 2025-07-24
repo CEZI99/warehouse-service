@@ -22,7 +22,7 @@ class KafkaHandler:
         try:
             await self.producer.send(
                 'warehouse-movements',
-                value=event.json().encode('utf-8')
+                value=event.model_dump_json().encode('utf-8')
             )
             logger.info(f"Sent Kafka event: {event.subject}")
         except Exception as e:
