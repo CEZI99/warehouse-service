@@ -31,7 +31,7 @@ class Movement(BaseModel):
     quantity: int
     timestamp: datetime
     related_movement_id: Optional[str] = None  # для связи отправки и приемки
-    
+
     class Config:
         orm_mode = True
 
@@ -40,8 +40,8 @@ class WarehouseStock(BaseModel):
     product_id: str
     quantity: int
     last_updated: datetime
-    
+
     class Config:
         orm_mode = True
 
-KafkaEvent.update_forward_refs()
+KafkaEvent.model_rebuild()
