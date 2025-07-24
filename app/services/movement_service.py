@@ -1,5 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.database import DBMovement, DBWarehouseStock
+from datetime import datetime
+
 class MovementService:
     @staticmethod
     async def get_stock(session: AsyncSession, warehouse_id: str, product_id: str):
@@ -8,20 +10,20 @@ class MovementService:
     @staticmethod
     async def process_movement(session: AsyncSession, movement: dict):
         stock = await MovementService.get_stock(
-            session, 
-            movement["warehouse_id"], 
+            session,
+            movement["warehouse_id"],
             movement["product_id"]
         )
-        
+
         current_quantity = stock.quantity if stock else 0
-        
+
         if movement["movement_type"] == "departure":
             if current_quantity < movement["quantity"]:
                 raise ValueError(
                     f"Not enough stock. Available: {current_quantity}, "
                     f"requested: {movement['quantity']}"
                 )
-            
+
             new_quantity = current_quantity - movement["quantity"]
             if stock:
                 stock.quantity = new_quantity
@@ -29,13 +31,14 @@ class MovementService:
                 stock = DBWarehouseStock(
                     warehouse_id=movement["warehouse_id"],
                     product_id=movement["product_id"],
-                    quantity=new_quantity
+                    quantity=new_quantity,
+                    last_updated=datetime.now()
                 )
                 session.add(stock)
-            
+
             db_movement = DBMovement(**movement)
             session.add(db_movement)
-        
+
         elif movement["movement_type"] == "arrival":
             if stock:
                 stock.quantity += movement["quantity"]
@@ -43,9 +46,11 @@ class MovementService:
                 stock = DBWarehouseStock(
                     warehouse_id=movement["warehouse_id"],
                     product_id=movement["product_id"],
-                    quantity=movement["quantity"]
+                    quantity=movement["quantity"],
+                    last_updated=datetime.now()
+
                 )
                 session.add(stock)
-            
+
             db_movement = DBMovement(**movement)
             session.add(db_movement)

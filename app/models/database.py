@@ -2,8 +2,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
 import os
-from sqlalchemy.exc import OperationalError
-from sqlalchemy import event
 
 DATABASE_URL = os.getenv("DATABASE_URL", None)
 
