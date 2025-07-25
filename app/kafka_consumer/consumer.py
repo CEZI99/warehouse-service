@@ -1,7 +1,6 @@
 import json
 import logging
 import asyncio
-from datetime import datetime
 from typing import Dict, Any
 
 from aiokafka import AIOKafkaConsumer
@@ -76,23 +75,11 @@ class KafkaConsumer:
             if not await self._validate_message_structure(data):
                 return False
 
-            # Подготовка данных для обработки
-            movement = {
-                "id": data["id"],
-                "source": data["source"],
-                "movement_id": data["data"]["movement_id"],
-                "movement_type": data["data"]["event"],
-                "warehouse_id": data["data"]["warehouse_id"],
-                "product_id": data["data"]["product_id"],
-                "quantity": data["data"]["quantity"],
-                "timestamp": datetime.fromisoformat(data["data"]["timestamp"].rstrip('Z'))
-            }
+            logger.info(f"Processing movement: {data['id']}")
 
-            logger.info(f"Processing movement: {movement['id']}")
-
-            # Обработка движения
+            # Обработка движения с использованием полного метода process_kafka_event
             async with self.Session() as session:
-                await MovementService._process_movement(session, movement)
+                await MovementService.process_kafka_event(session, data)
                 await session.commit()
 
             return True

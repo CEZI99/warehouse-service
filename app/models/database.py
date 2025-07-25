@@ -11,9 +11,8 @@ Base = declarative_base()
 class DBMovement(Base):
     __tablename__ = "movements"
 
-    id = Column(String(36), primary_key=True)
-    movement_id = Column(String(36), nullable=False)
-    movement_type = Column(String(10), nullable=False)
+    movement_id = Column(String(36), primary_key=True)
+    movement_type = Column(String(10), primary_key=True)
     warehouse_id = Column(String(36), nullable=False)
     product_id = Column(String(36), nullable=False)
     quantity = Column(Integer, nullable=False)
@@ -34,7 +33,7 @@ class DBWarehouseStock(Base):
     warehouse_id = Column(String(36), primary_key=True)
     product_id = Column(String(36), primary_key=True)
     quantity = Column(Integer, nullable=False, default=0)
-    last_updated = Column(DateTime(timezone=True), 
+    last_updated = Column(DateTime(timezone=True),
                       default=datetime.now,
                       onupdate=datetime.now)
 

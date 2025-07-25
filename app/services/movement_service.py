@@ -14,21 +14,30 @@ class MovementService:
         return await session.get(DBWarehouseStock, (warehouse_id, product_id))
 
     @staticmethod
+    async def _is_dublicated(session: AsyncSession, movement_id: str, movement_type: str) -> bool:
+        """Проверка, было ли уже обработано такое перемещение"""
+        result = await session.execute(
+            select(DBMovement)
+            .where(DBMovement.movement_id == movement_id)
+            .where(DBMovement.movement_type == movement_type)
+        )
+        return result.scalars().first() is not None
+
+    @staticmethod
     async def process_kafka_event(session: AsyncSession, message: Dict) -> None:
         """Обработка события из Kafka"""
         try:
             data = message["data"]
             movement_type = data["event"]
             movement_id = data["movement_id"]
-            
+
             # Проверка на дубликат обработки
-            if await MovementService._is_processed(session, movement_id, movement_type):
+            if await MovementService._is_dublicated(session, movement_id, movement_type):
                 logger.warning(f"Movement already processed: {movement_id}/{movement_type}")
                 return
 
             # Подготовка данных для обработки
             movement = {
-                "id": message["id"],
                 "movement_id": movement_id,
                 "movement_type": movement_type,
                 "warehouse_id": data["warehouse_id"],
@@ -42,7 +51,7 @@ class MovementService:
 
             # Обработка перемещения
             await MovementService._process_movement(session, movement)
-            
+
             # Связывание парных перемещений
             if movement_type in ["arrival", "departure"]:
                 await MovementService._link_movements(session, movement_id)
@@ -97,34 +106,49 @@ class MovementService:
 
     @staticmethod
     async def _link_movements(session: AsyncSession, movement_id: str) -> None:
-        """Связывание парных перемещений (отправка и приемка)"""
+        """Связывание парных перемещений (отправка и приемка) между складами.
+        Args:
+            movement_id: Уникальный идентификатор перемещения, 
+                    общий для парных событий отправки/приемки
+        Logic:
+            1. Находит все записи перемещений с заданным movement_id
+            2. Если найдены оба события (отправка и приемка):
+            - Устанавливает взаимные ссылки между складами
+            - Логирует время доставки
+        """
+        # Шаг 1: Поиск всех перемещений с этим movement_id
+        # Сортировка по timestamp критична для определения порядка событий
         result = await session.execute(
             select(DBMovement)
             .where(DBMovement.movement_id == movement_id)
             .order_by(DBMovement.timestamp)
         )
         movements = result.scalars().all()
-        
+        # Шаг 2: Проверяем, что есть оба события (отправка и приемка)
         if len(movements) == 2:
+            # Извлекаем departure (отправка) - должно быть первым по времени
             departure = next(m for m in movements if m.movement_type == "departure")
+            # Извлекаем arrival (приемка) - должно быть вторым по времени
             arrival = next(m for m in movements if m.movement_type == "arrival")
-            
+
+            # Шаг 3: Устанавливаем взаимные ссылки между складами
+            # В записи об отправке указываем склад-получатель
             departure.related_warehouse_id = arrival.warehouse_id
+            # В записи о приемке указываем склад-отправитель
             arrival.related_warehouse_id = departure.warehouse_id
-            
-            # Расчет времени между отправкой и получением
-            time_delta = arrival.timestamp - departure.timestamp
+            # Шаг 4: Расчет и логирование времени доставки
+            time_delta = arrival.timestamp - departure.timestamp  # Вычисляем дельту
+            # Форматируем логи для аналитики
             logger.info(
-                f"Linked movements: {movement_id}, "
-                f"time delta: {time_delta.total_seconds()} sec"
+                f"Связаны перемещения: ID={movement_id}, "
+                f"Отправка: {departure.warehouse_id} -> Приемка: {arrival.warehouse_id}, "
+                f"Время доставки: {time_delta.total_seconds()} сек. "
+                f"({time_delta.total_seconds()/3600:.2f} часов)"
             )
 
-    @staticmethod
-    async def _is_processed(session: AsyncSession, movement_id: str, movement_type: str) -> bool:
-        """Проверка, было ли уже обработано такое перемещение"""
-        result = await session.execute(
-            select(DBMovement)
-            .where(DBMovement.movement_id == movement_id)
-            .where(DBMovement.movement_type == movement_type)
-        )
-        return result.scalars().first() is not None
+        # Если событий меньше 2 - значит второе еще не обработано
+        elif len(movements) > 2:
+            logger.error(
+                f"Обнаружены дубликаты для movement_id={movement_id}. "
+                f"Найдено записей: {len(movements)}"
+            )

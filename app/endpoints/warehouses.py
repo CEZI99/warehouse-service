@@ -1,4 +1,5 @@
 from datetime import timedelta
+from sqlalchemy import select
 import os
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,28 +45,49 @@ async def get_movement_details(
     movement_id: str,
     db: AsyncSession = Depends(get_db)
 ):
-    """Получение информации о перемещении с кэшированием"""
-    movement = await db.get(DBMovement, movement_id)
+    """Получение информации о перемещении"""
+    # Получаем перемещение по составному ключу
+    movement = await db.execute(
+        select(DBMovement)
+        .where(DBMovement.movement_id == movement_id)
+    )
+    movement = movement.scalars().first()
+
     if not movement:
         raise HTTPException(status_code=404, detail="Перемещение не найдено")
 
     result = {
-        "id": movement.id,
+        "movement_id": movement.movement_id,
         "type": movement.movement_type,
         "warehouse_id": movement.warehouse_id,
         "product_id": movement.product_id,
         "quantity": movement.quantity,
-        "timestamp": movement.timestamp.isoformat()
+        "timestamp": movement.timestamp.isoformat(),
+        "source": movement.source,
+        "processed_at": movement.processed_at.isoformat()
     }
 
-    if movement.related_movement_id:
-        related = await db.get(DBMovement, movement.related_movement_id)
-        if related:
-            time_diff = movement.timestamp - related.timestamp
+    # Добавляем информацию о связанном перемещении, если есть
+    if movement.related_warehouse_id:
+        # Находим парное перемещение (arrival/departure с тем же movement_id)
+        related_type = "arrival" if movement.movement_type == "departure" else "departure"
+
+        related_movement = await db.execute(
+            select(DBMovement)
+            .where(DBMovement.movement_id == movement_id)
+            .where(DBMovement.movement_type == related_type)
+        )
+        related_movement = related_movement.scalars().first()
+
+        if related_movement:
+            time_diff = abs((movement.timestamp - related_movement.timestamp).total_seconds())
             result.update({
-                "related_movement_id": movement.related_movement_id,
-                "time_in_transit": str(time_diff).split(".")[0],
-                "quantity_difference": abs(movement.quantity - related.quantity)
+                "related_movement": {
+                    "type": related_movement.movement_type,
+                    "warehouse_id": related_movement.warehouse_id,
+                    "timestamp": related_movement.timestamp.isoformat(),
+                    "time_in_transit_seconds": time_diff
+                }
             })
 
     return result
