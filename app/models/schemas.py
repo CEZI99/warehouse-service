@@ -1,4 +1,3 @@
-"""models.py"""
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
@@ -19,18 +18,18 @@ class EventData(BaseModel):
     movement_id: str
     warehouse_id: str
     timestamp: str
-    event: str  # "arrival" или "departure"
+    event: str
     product_id: str
     quantity: int
 
 class Movement(BaseModel):
     id: str
-    movement_type: str  # "arrival" или "departure"
+    movement_type: str
     warehouse_id: str
     product_id: str
     quantity: int
     timestamp: datetime
-    related_movement_id: Optional[str] = None  # для связи отправки и приемки
+    related_movement_id: Optional[str] = None
 
     class Config:
         orm_mode = True
