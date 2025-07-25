@@ -19,7 +19,6 @@
 - Брокер сообщений: Apache Kafka
 - База данных: PostgreSQL
 - Бэкенд: Python 3.11 + Async SQLAlchemy + FastAPI
-- Мониторинг: Prometheus + Grafana
 
 ## Быстрый старт
 
